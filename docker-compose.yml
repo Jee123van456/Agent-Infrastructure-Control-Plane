@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=tylerdeck_super_secret_jwt_key_2026_prod
+      - DATABASE_URL=postgresql://tylerdeck:tylerdeckpass@postgres:5432/tylerdeckdb
+    depends_on:
+      - postgres
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=tylerdeck
+      - POSTGRES_PASSWORD=tylerdeckpass
+      - POSTGRES_DB=tylerdeckdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
