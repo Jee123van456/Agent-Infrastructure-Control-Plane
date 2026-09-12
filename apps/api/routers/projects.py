@@ -225,6 +225,29 @@ def create_environment(
     )
 
 # --- Agents ---
+@router.get("/agents", response_model=List[AgentResponse])
+def list_all_organization_agents(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    agents = db.query(Agent).join(Project).filter(
+        Project.organization_id == current_user.organization_id
+    ).order_by(Agent.created_at.desc()).all()
+    return [
+        AgentResponse(
+            id=a.id,
+            project_id=a.project_id,
+            name=a.name,
+            description=a.description,
+            environment=a.environment or "development",
+            framework=a.framework or "custom",
+            provider=a.provider or "openai",
+            model=a.model or "gpt-4o",
+            current_version=a.current_version or "v1.0.0",
+            created_at=a.created_at
+        ) for a in agents
+    ]
+
 @router.get("/projects/{project_id}/agents", response_model=List[AgentResponse])
 def list_agents(
     project_id: str,

@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FolderKanban, Bot, Plus, ArrowRight, Activity, Layers, Key, Check, AlertCircle } from 'lucide-react';
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -60,8 +62,7 @@ export default function ProjectsPage() {
         setShowModal(false);
         setName('');
         setDescription('');
-        setProjects((prev) => [newProj, ...prev]);
-        fetchProjects();
+        router.push(`/dashboard/projects/${newProj.id}`);
       } else {
         const err = await res.json();
         setErrorMsg(err.detail || 'Failed to create project');
