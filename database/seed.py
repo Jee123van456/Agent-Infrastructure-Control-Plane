@@ -9,7 +9,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from apps.api.database import SessionLocal, engine, Base
 from apps.api.models import (
     Organization, User, Project, Agent, AgentVersion, APIKey,
-    Trace, TraceEvent, LLMCall, ToolCall, Evaluation, Policy, PolicyViolation, Alert, AlertEvent
+    Trace, TraceEvent, LLMCall, ToolCall, Evaluation, Policy, PolicyViolation, Alert, AlertEvent,
+    EvalDataset, DatasetCase, DatasetRun
 )
 from apps.api.auth import hash_password, generate_api_key, hash_api_key
 from apps.api.pricing import calculate_llm_cost
@@ -54,7 +55,7 @@ def seed_database():
         # 4. Create API Key
         raw_key, prefix, key_hash = generate_api_key()
         # Ensure we have a known test API key prefix
-        test_raw_key = "td_live_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c"
+        test_raw_key = "td_test_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c"
         test_key_prefix = test_raw_key[:12]
         test_key_hash = hash_api_key(test_raw_key)
 
@@ -375,6 +376,58 @@ def seed_database():
             current_value=82.1,
             severity="CRITICAL",
             created_at=now - timedelta(minutes=45)
+        ))
+
+        # 12. Create Evaluation Dataset: Customer Support Regression (10 Test Cases)
+        eval_ds = EvalDataset(
+            project_id=project.id,
+            name="Customer Support Regression",
+            description="Continuous benchmarking dataset for verifying customer support agent routing and tool execution correctness across release versions."
+        )
+        db.add(eval_ds)
+        db.flush()
+
+        test_cases_data = [
+            ("Where is my order #ORD-101?", "customer_db_search", "delivered"),
+            ("Track package for order #ORD-102", "order_database_search", "in transit"),
+            ("Issue refund for item #ORD-103", "refund_processor", "refund issued"),
+            ("Cancel order #ORD-104", "order_cancellation_api", "cancelled"),
+            ("Change shipping address for #ORD-105", "address_updater", "updated"),
+            ("Get invoice receipt for #ORD-106", "invoice_generator", "receipt"),
+            ("Check return eligibility for #ORD-107", "return_policy_checker", "eligible"),
+            ("Track return package #ORD-108", "return_tracker", "received"),
+            ("Apply promo discount code #ORD-109", "discount_api", "applied"),
+            ("Check warranty status for order #ORD-110", "warranty_checker", "valid")
+        ]
+
+        for input_q, expected_t, expected_o in test_cases_data:
+            db.add(DatasetCase(
+                dataset_id=eval_ds.id,
+                input_query=input_q,
+                expected_tool=expected_t,
+                expected_output_contains=expected_o
+            ))
+
+        # Benchmark Run v1.0: 10 cases, 9 passed, 1 failed -> Score 90.0%
+        db.add(DatasetRun(
+            dataset_id=eval_ds.id,
+            agent_id=support_agent.id,
+            agent_version="v1.0",
+            total_cases=10,
+            passed_cases=9,
+            pass_rate_percent=90.0,
+            created_at=now - timedelta(days=2)
+        ))
+
+        # Benchmark Run v1.1: 10 cases, 7 passed, 3 failed -> Score 70.0% (REGRESSION DETECTED!)
+        db.add(DatasetRun(
+            dataset_id=eval_ds.id,
+            agent_id=support_agent.id,
+            agent_version="v1.1",
+            total_cases=10,
+            passed_cases=7,
+            pass_rate_percent=70.0,
+            created_at=now - timedelta(hours=2)
         ))
 
         db.commit()

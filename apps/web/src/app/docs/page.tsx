@@ -54,7 +54,7 @@ export default function DocsPage() {
 {`from tylerdeck import TylerDeck
 
 # 1. Initialize client with your project API key
-td = TylerDeck(api_key="td_live_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c")
+td = TylerDeck(api_key="td_test_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c")
 
 # 2. Add trace decorator to your agent execution function
 @td.trace(name="customer_support_flow", agent_id="support_agent", version="v1.5")

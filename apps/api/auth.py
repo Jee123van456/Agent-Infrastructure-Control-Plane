@@ -53,10 +53,10 @@ def generate_api_key() -> tuple[str, str, str]:
     """
     Generates a new secure API Key.
     Returns (raw_key, key_prefix, key_hash)
-    Example raw key: 'td_live_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c'
+    Example raw key: 'td_test_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c'
     """
     random_part = secrets.token_hex(20)
-    raw_key = f"td_live_{random_part}"
+    raw_key = f"td_test_{random_part}"
     key_prefix = raw_key[:12]
     key_hash = hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
     return raw_key, key_prefix, key_hash
@@ -97,7 +97,7 @@ def verify_sdk_api_key(
     db: Session = Depends(get_db)
 ) -> Project:
     """
-    Validates API key from SDK request (Bearer td_live_... or X-API-Key header).
+    Validates API key from SDK request (Bearer td_test_... or X-API-Key header).
     Returns the associated Project.
     """
     if not credentials:
@@ -107,10 +107,10 @@ def verify_sdk_api_key(
         )
     
     raw_key = credentials.credentials.strip()
-    if not raw_key.startswith("td_live_"):
+    if not (raw_key.startswith("td_test_") or raw_key.startswith("td_live_") or raw_key.startswith("td_")):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API Key format. Must start with 'td_live_'"
+            detail="Invalid API Key format. Must start with 'td_test_'"
         )
 
     key_hash = hash_api_key(raw_key)

@@ -1,9 +1,14 @@
+import os
+import sys
 import time
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../sdk/python")))
+
 from tylerdeck import TylerDeck
 
 def main():
     td = TylerDeck(
-        api_key="td_live_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c",
+        api_key="td_test_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c",
         endpoint="http://localhost:8000"
     )
 

@@ -52,7 +52,7 @@ def test_metrics_overview():
 
 def test_sdk_trace_ingestion():
     # Ingest trace using known test key
-    test_key = "td_live_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c"
+    test_key = "td_test_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c"
     
     payload = {
         "agent_id": "Customer Support Agent",

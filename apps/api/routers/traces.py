@@ -157,42 +157,80 @@ def ingest_trace(
     db.commit()
     return {"status": "success", "trace_id": trace.id, "external_id": trace.trace_id_external}
 
-# --- Dashboard Trace Listing ---
+# --- Dashboard Trace Listing with Server-Side Search & Pagination ---
 @router.get("", response_model=List[TraceResponse])
 def list_traces(
     project_id: Optional[str] = None,
     agent_id: Optional[str] = None,
+    agent: Optional[str] = None,
     status_filter: Optional[str] = None,
+    status: Optional[str] = None,
     version_filter: Optional[str] = None,
+    version: Optional[str] = None,
     environment: Optional[str] = None,
-    limit: int = Query(50, le=200),
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+    tool: Optional[str] = None,
+    error: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    limit: int = Query(50, le=500),
     offset: int = 0,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    Returns server-side filtered and paginated trace records.
+    Filters: agent, version, status, provider, model, tool, error, environment, date range.
+    """
     query = db.query(Trace).join(Project).filter(Project.organization_id == current_user.organization_id)
     
+    resolved_agent = agent_id or agent
+    resolved_status = status_filter or status
+    resolved_version = version_filter or version
+
     if project_id:
         query = query.filter(Trace.project_id == project_id)
-    if agent_id:
-        query = query.filter(Trace.agent_id == agent_id)
-    if status_filter:
-        query = query.filter(Trace.status == status_filter)
-    if version_filter:
-        query = query.filter(Trace.agent_version == version_filter)
+    if resolved_agent:
+        query = query.filter((Trace.agent_id == resolved_agent) | (Trace.agent_id.in_(
+            db.query(Agent.id).filter(Agent.name.ilike(f"%{resolved_agent}%"))
+        )))
+    if resolved_status:
+        query = query.filter(Trace.status == resolved_status)
+    if resolved_version:
+        query = query.filter(Trace.agent_version == resolved_version)
     if environment:
         query = query.filter(Trace.environment == environment)
+    if error:
+        query = query.filter(Trace.error_message.ilike(f"%{error}%"))
+    if date_from:
+        query = query.filter(Trace.created_at >= date_from)
+    if date_to:
+        query = query.filter(Trace.created_at <= date_to)
+
+    # Sub-query filters for provider, model, tool
+    if provider or model:
+        llm_filter = db.query(TraceEvent.trace_id).join(LLMCall)
+        if provider:
+            llm_filter = llm_filter.filter(LLMCall.provider == provider.lower())
+        if model:
+            llm_filter = llm_filter.filter(LLMCall.model.ilike(f"%{model}%"))
+        query = query.filter(Trace.id.in_(llm_filter))
+
+    if tool:
+        tool_filter = db.query(TraceEvent.trace_id).join(ToolCall).filter(ToolCall.tool_name.ilike(f"%{tool}%"))
+        query = query.filter(Trace.id.in_(tool_filter))
 
     traces = query.order_by(Trace.created_at.desc()).offset(offset).limit(limit).all()
 
     result = []
     for t in traces:
-        agent = db.query(Agent).filter(Agent.id == t.agent_id).first()
+        agent_obj = db.query(Agent).filter(Agent.id == t.agent_id).first()
         result.append(TraceResponse(
             id=t.id,
             project_id=t.project_id,
             agent_id=t.agent_id,
-            agent_name=agent.name if agent else "Unknown Agent",
+            agent_name=agent_obj.name if agent_obj else "Unknown Agent",
             trace_id_external=t.trace_id_external,
             name=t.name,
             environment=t.environment,

@@ -230,6 +230,8 @@ class ErrorClusterItem(BaseModel):
     last_seen: datetime
     representative_trace_id: str
     sample_error: str
+    affected_agent: Optional[str] = None
+    affected_version: Optional[str] = None
 
 class RegressionDetail(BaseModel):
     metric_name: str

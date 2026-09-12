@@ -49,7 +49,7 @@ class TraceContext:
             "events": sanitize_data(self.events)
         }
         self.client.exporter.enqueue(payload)
-        return False  # Do not suppress exception if any
+        return False  # Do not suppress exception if any (Fail-open for application code)
 
     def log_input(self, text: str):
         self.input_text = text
@@ -67,11 +67,11 @@ class TraceContext:
             "status": status
         })
 
-    def log_llm_call(self, provider: str, model: str, prompt_tokens: int, completion_tokens: int, temperature: float = 0.7):
+    def log_llm_call(self, provider: str, model: str, prompt_tokens: int, completion_tokens: int, duration_ms: float = 450.0, temperature: float = 0.7):
         self.events.append({
             "event_type": "llm_call",
             "name": f"LLM: {provider}/{model}",
-            "duration_ms": 450.0,
+            "duration_ms": duration_ms,
             "status": "SUCCESS",
             "llm_call": {
                 "provider": provider,
@@ -82,19 +82,34 @@ class TraceContext:
             }
         })
 
-    def log_tool_call(self, tool_name: str, tool_category: str = "general", arguments: Optional[dict] = None, result: Optional[dict] = None, execution_time_ms: float = 0.0, status: str = "SUCCESS", error_details: Optional[str] = None):
+    def llm_call(self, provider: str, model: str, prompt_tokens: int, completion_tokens: int, duration_ms: float = 450.0, temperature: float = 0.7):
+        """Convenience alias for log_llm_call."""
+        self.log_llm_call(provider=provider, model=model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens, duration_ms=duration_ms, temperature=temperature)
+
+    def log_tool_call(
+        self,
+        name: Optional[str] = None,
+        tool_name: Optional[str] = None,
+        tool_category: str = "general",
+        arguments: Optional[dict] = None,
+        result: Optional[dict] = None,
+        execution_time_ms: float = 0.0,
+        status: str = "SUCCESS",
+        error_details: Optional[str] = None
+    ):
+        resolved_name = name or tool_name or "unnamed_tool"
         if status != "SUCCESS":
             self.status = "ERROR"
             if error_details:
-                self.error_message = f"Tool '{tool_name}' failed: {error_details}"
+                self.error_message = f"Tool '{resolved_name}' failed: {error_details}"
 
         self.events.append({
             "event_type": "tool_call",
-            "name": f"Tool: {tool_name}",
+            "name": f"Tool: {resolved_name}",
             "duration_ms": execution_time_ms,
             "status": status,
             "tool_call": {
-                "tool_name": tool_name,
+                "tool_name": resolved_name,
                 "tool_category": tool_category,
                 "arguments": arguments or {},
                 "result": result or {},
@@ -103,6 +118,29 @@ class TraceContext:
                 "error_details": error_details
             }
         })
+
+    def tool_call(
+        self,
+        name: Optional[str] = None,
+        tool_name: Optional[str] = None,
+        tool_category: str = "general",
+        arguments: Optional[dict] = None,
+        result: Optional[dict] = None,
+        execution_time_ms: float = 0.0,
+        status: str = "SUCCESS",
+        error_details: Optional[str] = None
+    ):
+        """Convenience alias for log_tool_call."""
+        self.log_tool_call(
+            name=name,
+            tool_name=tool_name,
+            tool_category=tool_category,
+            arguments=arguments,
+            result=result,
+            execution_time_ms=execution_time_ms,
+            status=status,
+            error_details=error_details
+        )
 
 class TylerDeck:
     def __init__(self, api_key: str, endpoint: str = "http://localhost:8000", environment: str = "production", fail_open: bool = True):
@@ -126,6 +164,14 @@ class TylerDeck:
         resolved_agent = agent or agent_id
         resolved_version = version or agent_version
         return TraceContext(self, name=name, agent_id=resolved_agent, agent_version=resolved_version, user_id=user_id)
+
+    def flush(self, timeout: float = 5.0):
+        """Flushes buffered traces to backend."""
+        self.exporter.shutdown()
+
+    def shutdown(self):
+        """Shuts down background trace exporter thread."""
+        self.exporter.shutdown()
 
     @classmethod
     def get_instance(cls) -> Optional['TylerDeck']:

@@ -5,7 +5,7 @@ import { Key, Copy, Check, Plus, Trash2, ShieldAlert } from 'lucide-react';
 
 export default function APIKeysPage() {
   const [copied, setCopied] = useState(false);
-  const rawTestKey = "td_live_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c";
+  const rawTestKey = "td_test_9f8a3c4b1e5d6f7a8b9c0d1e2f3a4b5c";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(rawTestKey);
@@ -34,7 +34,7 @@ export default function APIKeysPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-white">Production SDK Key</h2>
-            <p className="text-xs text-slate-400 font-mono">Prefix: td_live_9f8a3c4b | Created: Today</p>
+            <p className="text-xs text-slate-400 font-mono">Prefix: td_test_9f8a3c4b | Created: Today</p>
           </div>
           <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono">
             ACTIVE
