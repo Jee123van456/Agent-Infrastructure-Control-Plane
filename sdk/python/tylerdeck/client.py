@@ -105,16 +105,27 @@ class TraceContext:
         })
 
 class TylerDeck:
-    def __init__(self, api_key: str, endpoint: str = "http://localhost:8000", environment: str = "production"):
+    def __init__(self, api_key: str, endpoint: str = "http://localhost:8000", environment: str = "production", fail_open: bool = True):
         global _global_td_instance
         self.api_key = api_key
         self.endpoint = endpoint
         self.environment = environment
-        self.exporter = AsyncTraceExporter(api_key=api_key, endpoint=endpoint)
+        self.fail_open = fail_open
+        self.exporter = AsyncTraceExporter(api_key=api_key, endpoint=endpoint, fail_open=fail_open)
         _global_td_instance = self
 
-    def trace(self, name: str, agent_id: str = "default_agent", agent_version: str = "v1.0", user_id: Optional[str] = None) -> TraceContext:
-        return TraceContext(self, name=name, agent_id=agent_id, agent_version=agent_version, user_id=user_id)
+    def trace(
+        self,
+        name: str,
+        agent_id: str = "default_agent",
+        agent_version: str = "v1.0",
+        agent: Optional[str] = None,
+        version: Optional[str] = None,
+        user_id: Optional[str] = None
+    ) -> TraceContext:
+        resolved_agent = agent or agent_id
+        resolved_version = version or agent_version
+        return TraceContext(self, name=name, agent_id=resolved_agent, agent_version=resolved_version, user_id=user_id)
 
     @classmethod
     def get_instance(cls) -> Optional['TylerDeck']:

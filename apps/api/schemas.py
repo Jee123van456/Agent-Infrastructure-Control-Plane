@@ -248,3 +248,56 @@ class AgentRegressionReport(BaseModel):
     previous_version: str
     is_regression_detected: bool
     regressions: List[RegressionDetail] = []
+
+class SecurityEventResponse(BaseModel):
+    id: str
+    organization_id: str
+    project_id: str
+    agent_id: str
+    trace_id: Optional[str] = None
+    event_id: Optional[str] = None
+    event_type: str
+    action_attempted: str
+    severity: str
+    details_json: Optional[Dict[str, Any]] = None
+    created_at: datetime
+
+class FailureClusterResponse(BaseModel):
+    id: str
+    project_id: str
+    agent_id: str
+    agent_version: str
+    category: str
+    count: int
+    first_seen: datetime
+    last_seen: datetime
+    representative_trace_id: Optional[str] = None
+    likely_association: Optional[Dict[str, Any]] = None
+
+class EvalDatasetCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class DatasetCaseCreate(BaseModel):
+    input_query: str
+    expected_tool: Optional[str] = None
+    expected_output_contains: Optional[str] = None
+    metadata_json: Optional[Dict[str, Any]] = None
+
+class DatasetRunCreate(BaseModel):
+    agent_id: str
+    agent_version: Optional[str] = "v1.0"
+
+class WebhookCreate(BaseModel):
+    name: str
+    url: str
+    secret: Optional[str] = None
+
+class WebhookResponse(BaseModel):
+    id: str
+    organization_id: str
+    name: str
+    url: str
+    is_active: bool
+    created_at: datetime
+

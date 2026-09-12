@@ -312,3 +312,33 @@ class WebhookLog(Base):
 
     webhook = relationship("Webhook", back_populates="logs")
 
+class SecurityEvent(Base):
+    __tablename__ = "security_events"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), nullable=False, index=True)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False)
+    trace_id = Column(String(36), ForeignKey("traces.id"), nullable=True)
+    event_id = Column(String(36), nullable=True)
+    event_type = Column(String(50), nullable=False)  # POLICY_VIOLATION, BLOCKED_ACTION, APPROVAL_REQUIRED, SUSPICIOUS_TOOL_CALL
+    action_attempted = Column(String(255), nullable=False)
+    severity = Column(String(50), default="HIGH")     # LOW, MEDIUM, HIGH, CRITICAL
+    details_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+class FailureCluster(Base):
+    __tablename__ = "failure_clusters"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False)
+    agent_version = Column(String(50), default="v1.0")
+    category = Column(String(100), nullable=False)  # TOOL_TIMEOUT, INVALID_TOOL_ARGUMENT, LLM_TIMEOUT, LLM_RATE_LIMIT, PROVIDER_ERROR, POLICY_VIOLATION, EVALUATION_FAILURE, UNKNOWN
+    count = Column(Integer, default=1)
+    first_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    representative_trace_id = Column(String(36), nullable=True)
+    likely_association = Column(JSON, nullable=True)
+
+

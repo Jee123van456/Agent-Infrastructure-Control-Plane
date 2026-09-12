@@ -65,6 +65,24 @@ While standard APM (Application Performance Monitoring) tools like Datadog and S
 
 ## 4. Competitive Whitespace & TylerDeck Differentiation
 
-1. **The Telemetry-to-Intelligence Gap:** Existing tools display log streams ("Here are 5,000 traces"). TylerDeck calculates version regression deltas ("Agent v1.5 dropped tool success rate by 14%"). [INFERENCE]
-2. **Unified Observability + Security Policy:** Small startups cannot manage 3 separate platforms for tracing, security, and evals. TylerDeck unifies trace observability, multi-dimensional agent health scoring, and tool permission policies (ALLOW, REQUIRE APPROVAL, BLOCK) into a single command center. [VERIFIED]
-3. **Developer-First Speed:** Fail-open lightweight Python SDK (`@td.trace`) with zero heavy dependencies and under 5-minute setup. [VERIFIED]
+### Product Wedge: AGENT RELIABILITY INTELLIGENCE
+
+The broad "agent control plane" category is rapidly populating with tools focused on generic token governance or manual tracing. TylerDeck does NOT compete simply as another passive tracer. 
+
+Instead, TylerDeck's distinct wedge is **AGENT RELIABILITY INTELLIGENCE**, answering five core developer questions in a single loop:
+
+```
+What happened?      ──►  Hierarchical Execution Waterfall & Span Detail
+       │
+Why did it happen?  ──►  Normalized Failure Clustering & Attribute Associations
+       │
+Was it correct?     ──►  Deterministic & LLM-as-Judge Evaluation Engine
+       │
+Did it regress?     ──►  Automated Agent Version Comparison (v1.0 vs v1.1)
+       │
+What should I fix?  ──►  Actionable Root-Cause Signals & Policy Rules
+```
+
+1. **The Telemetry-to-Intelligence Gap:** Existing tools display log streams ("Here are 5,000 traces"). TylerDeck calculates version regression deltas ("Agent v1.5 dropped tool success rate by 14.2% and increased P95 latency by 1.9s").
+2. **Unified Observability + Security Policy:** Small startups cannot manage 3 separate platforms for tracing, security, and evals. TylerDeck unifies trace observability, multi-dimensional agent health scoring, and tool permission policies (ALLOW, REQUIRE_APPROVAL, BLOCK) into a single control plane.
+3. **Developer-First Speed:** Fail-open lightweight Python SDK with zero heavy dependencies, background async exporter, and under 5-minute setup.

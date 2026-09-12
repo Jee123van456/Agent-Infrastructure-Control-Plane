@@ -9,11 +9,20 @@ from typing import Optional
 logger = logging.getLogger("tylerdeck.sdk")
 
 class AsyncTraceExporter:
-    def __init__(self, api_key: str, endpoint: str, max_queue_size: int = 1000, timeout_seconds: float = 5.0, max_retries: int = 3):
+    def __init__(
+        self,
+        api_key: str,
+        endpoint: str,
+        max_queue_size: int = 1000,
+        timeout_seconds: float = 5.0,
+        max_retries: int = 3,
+        fail_open: bool = True
+    ):
         self.api_key = api_key
         self.endpoint = endpoint.rstrip('/')
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
+        self.fail_open = fail_open
         self.queue = queue.Queue(maxsize=max_queue_size)
         self.running = True
         self.worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
@@ -23,19 +32,24 @@ class AsyncTraceExporter:
         try:
             self.queue.put_nowait(trace_payload)
         except queue.Full:
+            if not self.fail_open:
+                raise RuntimeError("TylerDeck queue full and fail_open=False")
             logger.warning("TylerDeck SDK queue is full. Dropping trace payload to preserve application responsiveness.")
 
     def _worker_loop(self):
-        while self.running:
+        while self.running or not self.queue.empty():
             try:
-                item = self.queue.get(timeout=1.0)
+                item = self.queue.get(timeout=0.5)
                 if item:
                     self._send_payload_with_retries(item)
                     self.queue.task_done()
             except queue.Empty:
+                if not self.running:
+                    break
                 continue
             except Exception as e:
-                # Fail-open guarantee: Telemetry errors never crash customer host applications
+                if not self.fail_open:
+                    logger.error(f"TylerDeck exporter exception: {e}")
                 pass
 
     def _send_payload_with_retries(self, payload: dict):
@@ -59,6 +73,8 @@ class AsyncTraceExporter:
                         return
             except Exception as exc:
                 if attempt == self.max_retries:
+                    if not self.fail_open:
+                        raise RuntimeError(f"TylerDeck trace transmission failed after {attempt} attempts: {exc}")
                     logger.debug(f"TylerDeck SDK trace transmission failed after {attempt} attempts: {exc}")
                     return
                 time.sleep(backoff)
@@ -67,4 +83,4 @@ class AsyncTraceExporter:
     def shutdown(self):
         self.running = False
         if self.worker_thread.is_alive():
-            self.worker_thread.join(timeout=2.0)
+            self.worker_thread.join(timeout=3.0)
