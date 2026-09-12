@@ -34,17 +34,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const navItems = [
     { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Projects & Agents', href: '/dashboard/projects', icon: FolderKanban },
-    { name: 'Trace Explorer', href: '/dashboard/traces', icon: Activity },
-    { name: 'Tool Graph', href: '/dashboard/tool-graph', icon: Network, badge: 'NEW' },
-    { name: 'Version Regressions', href: '/dashboard/regressions', icon: GitCompare, badge: 'REGRESSION' },
-    { name: 'Eval Datasets', href: '/dashboard/datasets', icon: Database },
+    { name: 'Agents', href: '/dashboard/agents', icon: Bot },
+    { name: 'Traces', href: '/dashboard/traces', icon: Activity },
+    { name: 'Sessions', href: '/dashboard/sessions', icon: Network },
+    { name: 'Prompts', href: '/dashboard/prompts', icon: FolderKanban },
+    { name: 'Playground', href: '/dashboard/playground', icon: Cpu, badge: 'LIVE' },
     { name: 'Evaluations', href: '/dashboard/evaluations', icon: CheckCircle2 },
-    { name: 'Error Clusters', href: '/dashboard/errors', icon: AlertTriangle },
+    { name: 'Datasets', href: '/dashboard/datasets', icon: Database },
+    { name: 'Experiments', href: '/dashboard/experiments', icon: GitCompare },
+    { name: 'Failures', href: '/dashboard/failures', icon: AlertTriangle },
+    { name: 'Regressions', href: '/dashboard/regressions', icon: GitCompare, badge: 'REGRESSION' },
     { name: 'Cost Intelligence', href: '/dashboard/cost', icon: DollarSign },
+    { name: 'Alerts', href: '/dashboard/alerts', icon: Bell },
     { name: 'Security & Policies', href: '/dashboard/security', icon: ShieldCheck },
-    { name: 'Alerts & Webhooks', href: '/dashboard/alerts', icon: Bell },
-    { name: 'API Keys', href: '/dashboard/api-keys', icon: Key },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 

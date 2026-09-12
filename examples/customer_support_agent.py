@@ -68,22 +68,25 @@ def run_customer_support_agent(scenario: str = "success", endpoint: str = "http:
             name="customer_support_inquiry",
             agent="Customer Support Agent",
             version=version_str,
-            user_id="usr_sarah_c"
+            user_id="usr_sarah_c",
+            session_id="sess_customer_demo_9901"
         ) as trace:
-            trace.log_input(user_query)
+            trace.input(user_query)
 
             # Step 1: Initial LLM Intent Recognition & Routing Call
             print("  └─ [1/5] LLM Intent Classification (GPT-4o-mini)...")
             start_llm1 = time.time()
             time.sleep(0.3)  # LLM duration simulation
             llm1_duration = (time.time() - start_llm1) * 1000.0
-            
-            trace.log_llm_call(
+
+            trace.generation(
                 provider="openai",
                 model="gpt-4o-mini",
                 prompt_tokens=420,
                 completion_tokens=65,
-                duration_ms=round(llm1_duration, 1)
+                input=user_query,
+                output={"intent": "order_tracking", "order_id": "ORD-88219"},
+                latency_ms=round(llm1_duration, 1)
             )
 
             # Step 2: Customer Database Query Tool
@@ -92,12 +95,15 @@ def run_customer_support_agent(scenario: str = "success", endpoint: str = "http:
             db_res = query_customer_database("usr_sarah_c")
             db_duration = (time.time() - start_db) * 1000.0
 
-            trace.log_tool_call(
+            trace.tool(
                 name="customer_database",
+                input={"user_id": "usr_sarah_c"},
                 tool_category="database",
-                arguments={"user_id": "usr_sarah_c"},
-                result=db_res,
-                execution_time_ms=round(db_duration, 1),
+                execution_time_ms=round(db_duration, 1)
+            )
+            trace.tool_result(
+                name="customer_database",
+                output=db_res,
                 status="SUCCESS"
             )
 
@@ -109,12 +115,15 @@ def run_customer_support_agent(scenario: str = "success", endpoint: str = "http:
                     order_res = call_order_api("ORD-88219", action="status", force_timeout=True)
                 except Exception as exc:
                     api_duration = (time.time() - start_api) * 1000.0
-                    trace.log_tool_call(
+                    trace.tool(
                         name="order_api",
+                        input={"order_id": "ORD-88219", "action": "status"},
                         tool_category="api",
-                        arguments={"order_id": "ORD-88219", "action": "status"},
-                        result=None,
-                        execution_time_ms=round(api_duration, 1),
+                        execution_time_ms=round(api_duration, 1)
+                    )
+                    trace.tool_result(
+                        name="order_api",
+                        output=None,
                         status="TIMEOUT",
                         error_details=str(exc)
                     )
@@ -122,12 +131,15 @@ def run_customer_support_agent(scenario: str = "success", endpoint: str = "http:
             else:
                 order_res = call_order_api("ORD-88219", action="status", force_timeout=False)
                 api_duration = (time.time() - start_api) * 1000.0
-                trace.log_tool_call(
+                trace.tool(
                     name="order_api",
+                    input={"order_id": "ORD-88219", "action": "status"},
                     tool_category="api",
-                    arguments={"order_id": "ORD-88219", "action": "status"},
-                    result=order_res,
-                    execution_time_ms=round(api_duration, 1),
+                    execution_time_ms=round(api_duration, 1)
+                )
+                trace.tool_result(
+                    name="order_api",
+                    output=order_res,
                     status="SUCCESS"
                 )
 
@@ -137,17 +149,19 @@ def run_customer_support_agent(scenario: str = "success", endpoint: str = "http:
             time.sleep(0.4)
             llm2_duration = (time.time() - start_llm2) * 1000.0
 
-            trace.log_llm_call(
+            trace.generation(
                 provider="openai",
                 model="gpt-4o",
                 prompt_tokens=890,
                 completion_tokens=140,
-                duration_ms=round(llm2_duration, 1)
+                input="Synthesize delivery response",
+                output="Final response synthesized",
+                latency_ms=round(llm2_duration, 1)
             )
 
             # Step 5: Log Final Output
             final_response = f"Hello Sarah! Your order #ORD-88219 is currently IN_TRANSIT with FedEx Express (Tracking: TRK-9821471029) and scheduled for delivery tomorrow by 3:00 PM."
-            trace.log_output(final_response)
+            trace.output(final_response)
             print("  └─ [5/5] Final Response Generated.")
 
     except Exception as e:

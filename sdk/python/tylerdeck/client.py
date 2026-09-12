@@ -10,15 +10,25 @@ from tylerdeck.redactor import sanitize_data
 _global_td_instance: Optional['TylerDeck'] = None
 
 class TraceContext:
-    def __init__(self, client: 'TylerDeck', name: str, agent_id: str, agent_version: str = "v1.0", user_id: Optional[str] = None):
+    def __init__(
+        self,
+        client: 'TylerDeck',
+        name: str,
+        agent_id: str,
+        agent_version: str = "v1.0",
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None
+    ):
         self.client = client
         self.name = name
         self.agent_id = agent_id
         self.agent_version = agent_version
         self.user_id = user_id
+        self.session_id = session_id
         self.trace_id = str(uuid.uuid4())
         self.start_time = time.time()
         self.events: List[dict] = []
+        self.observations: List[dict] = []
         self.status = "SUCCESS"
         self.error_message = None
         self.input_text = None
@@ -37,6 +47,7 @@ class TraceContext:
         payload = {
             "agent_id": self.agent_id,
             "agent_version": self.agent_version,
+            "session_id": self.session_id,
             "trace_id": self.trace_id,
             "name": self.name,
             "environment": self.client.environment,
@@ -46,16 +57,132 @@ class TraceContext:
             "total_duration_ms": round(duration_ms, 2),
             "status": self.status,
             "error_message": self.error_message,
-            "events": sanitize_data(self.events)
+            "events": sanitize_data(self.events),
+            "observations": sanitize_data(self.observations)
         }
         self.client.exporter.enqueue(payload)
-        return False  # Do not suppress exception if any (Fail-open for application code)
+        return False  # Fail-open by default for application execution
 
     def log_input(self, text: str):
         self.input_text = text
 
+    def input(self, text: str):
+        self.input_text = text
+
     def log_output(self, text: str):
         self.output_text = text
+
+    def output(self, text: str):
+        self.output_text = text
+
+    def generation(
+        self,
+        provider: str = "openai",
+        model: str = "gpt-4o",
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0,
+        input: Optional[Any] = None,
+        output: Optional[Any] = None,
+        latency_ms: float = 450.0,
+        temperature: float = 0.7
+    ):
+        obs = {
+            "id": str(uuid.uuid4()),
+            "type": "generation",
+            "name": f"Generation: {provider}/{model}",
+            "status": "SUCCESS",
+            "provider": provider,
+            "model": model,
+            "input_tokens": prompt_tokens,
+            "output_tokens": completion_tokens,
+            "latency_ms": latency_ms,
+            "input_json": {"input": input} if isinstance(input, str) else input,
+            "output_json": {"output": output} if isinstance(output, str) else output
+        }
+        self.observations.append(obs)
+        # Also maintain legacy event structure for backward compatibility
+        self.log_llm_call(
+            provider=provider,
+            model=model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            duration_ms=latency_ms,
+            temperature=temperature
+        )
+
+    def tool(
+        self,
+        name: str,
+        input: Optional[Any] = None,
+        tool_category: str = "general",
+        execution_time_ms: float = 0.0
+    ):
+        obs = {
+            "id": str(uuid.uuid4()),
+            "type": "tool",
+            "name": f"Tool: {name}",
+            "status": "IN_PROGRESS",
+            "latency_ms": execution_time_ms,
+            "input_json": input if isinstance(input, dict) else {"input": input}
+        }
+        self.observations.append(obs)
+        self.log_tool_call(
+            name=name,
+            tool_name=name,
+            tool_category=tool_category,
+            arguments=input if isinstance(input, dict) else {"input": input},
+            execution_time_ms=execution_time_ms,
+            status="SUCCESS"
+        )
+
+    def tool_result(
+        self,
+        name: str,
+        output: Optional[Any] = None,
+        status: str = "SUCCESS",
+        error_details: Optional[str] = None,
+        execution_time_ms: float = 0.0
+    ):
+        if status != "SUCCESS":
+            self.status = "ERROR"
+            if error_details:
+                self.error_message = f"Tool '{name}' failed: {error_details}"
+
+        obs = {
+            "id": str(uuid.uuid4()),
+            "type": "tool_result",
+            "name": f"Tool Result: {name}",
+            "status": status,
+            "latency_ms": execution_time_ms,
+            "output_json": output if isinstance(output, dict) else {"output": output},
+            "error_message": error_details
+        }
+        self.observations.append(obs)
+
+    def retrieval(
+        self,
+        name: str,
+        query: str,
+        documents: Optional[List[Any]] = None,
+        latency_ms: float = 0.0
+    ):
+        obs = {
+            "id": str(uuid.uuid4()),
+            "type": "retrieval",
+            "name": f"Retrieval: {name}",
+            "status": "SUCCESS",
+            "latency_ms": latency_ms,
+            "input_json": {"query": query},
+            "output_json": {"documents": documents or []}
+        }
+        self.observations.append(obs)
+        self.log_event(
+            event_type="retrieval",
+            name=f"Retrieval: {name}",
+            inputs={"query": query},
+            outputs={"documents": documents or []},
+            duration_ms=latency_ms
+        )
 
     def log_event(self, event_type: str, name: str, inputs: Optional[dict] = None, outputs: Optional[dict] = None, duration_ms: float = 0.0, status: str = "SUCCESS"):
         self.events.append({
@@ -159,11 +286,19 @@ class TylerDeck:
         agent_version: str = "v1.0",
         agent: Optional[str] = None,
         version: Optional[str] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None
     ) -> TraceContext:
         resolved_agent = agent or agent_id
         resolved_version = version or agent_version
-        return TraceContext(self, name=name, agent_id=resolved_agent, agent_version=resolved_version, user_id=user_id)
+        return TraceContext(
+            self,
+            name=name,
+            agent_id=resolved_agent,
+            agent_version=resolved_version,
+            user_id=user_id,
+            session_id=session_id
+        )
 
     def flush(self, timeout: float = 5.0):
         """Flushes buffered traces to backend."""

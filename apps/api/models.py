@@ -33,6 +33,18 @@ class User(Base):
 
     organization = relationship("Organization", back_populates="users")
 
+class EnvironmentModel(Base):
+    __tablename__ = "environments"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False, index=True)
+    name = Column(String(50), nullable=False)  # development, staging, production
+    slug = Column(String(50), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project", back_populates="environments")
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -43,6 +55,7 @@ class Project(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     organization = relationship("Organization", back_populates="projects")
+    environments = relationship("EnvironmentModel", back_populates="project", cascade="all, delete-orphan")
     agents = relationship("Agent", back_populates="project", cascade="all, delete-orphan")
     api_keys = relationship("APIKey", back_populates="project", cascade="all, delete-orphan")
     traces = relationship("Trace", back_populates="project", cascade="all, delete-orphan")
@@ -54,7 +67,11 @@ class Agent(Base):
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    current_version = Column(String(50), default="v1.0")
+    environment = Column(String(50), default="development")
+    framework = Column(String(100), default="custom")  # langchain, llamaindex, autogen, custom
+    provider = Column(String(50), default="openai")     # openai, anthropic, google, custom
+    model = Column(String(100), default="gpt-4o")
+    current_version = Column(String(50), default="v1.0.0")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="agents")
@@ -69,6 +86,10 @@ class AgentVersion(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False)
     version = Column(String(50), nullable=False)
+    provider = Column(String(50), default="openai")
+    model = Column(String(100), default="gpt-4o")
+    configuration_json = Column(JSON, nullable=True)
+    status = Column(String(50), default="active")  # draft, active, deprecated
     changelog = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -79,11 +100,13 @@ class APIKey(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    environment = Column(String(50), default="development")
     name = Column(String(255), nullable=False)
     key_prefix = Column(String(16), nullable=False)  # e.g., 'td_live_a1b2'
     key_hash = Column(String(255), nullable=False, index=True)
     is_active = Column(Boolean, default=True)
     last_used_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="api_keys")
@@ -110,11 +133,17 @@ class Trace(Base):
     tags = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
+    session_id = Column(String(36), ForeignKey("sessions.id"), nullable=True, index=True)
+
     project = relationship("Project", back_populates="traces")
     agent = relationship("Agent", back_populates="traces")
+    session = relationship("Session", back_populates="traces")
     events = relationship("TraceEvent", back_populates="trace", cascade="all, delete-orphan")
+    observations = relationship("Observation", back_populates="trace", cascade="all, delete-orphan")
     evaluations = relationship("Evaluation", back_populates="trace", cascade="all, delete-orphan")
     policy_violations = relationship("PolicyViolation", back_populates="trace", cascade="all, delete-orphan")
+    feedback = relationship("UserFeedback", back_populates="trace", cascade="all, delete-orphan")
+    annotations = relationship("HumanAnnotation", back_populates="trace", cascade="all, delete-orphan")
 
 class TraceEvent(Base):
     __tablename__ = "trace_events"
@@ -340,5 +369,152 @@ class FailureCluster(Base):
     last_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     representative_trace_id = Column(String(36), nullable=True)
     likely_association = Column(JSON, nullable=True)
+
+class Session(Base):
+    __tablename__ = "sessions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False, index=True)
+    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True, index=True)
+    environment = Column(String(50), default="production", index=True)
+    external_session_id = Column(String(255), nullable=True, index=True)
+    user_id_external = Column(String(255), nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    traces = relationship("Trace", back_populates="session")
+    observations = relationship("Observation", back_populates="session")
+    feedback = relationship("UserFeedback", back_populates="session")
+
+class Observation(Base):
+    __tablename__ = "observations"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    trace_id = Column(String(36), ForeignKey("traces.id"), nullable=False, index=True)
+    session_id = Column(String(36), ForeignKey("sessions.id"), nullable=True, index=True)
+    parent_id = Column(String(36), nullable=True)
+    type = Column(String(50), nullable=False)  # generation, tool, retrieval, event, workflow, custom
+    name = Column(String(255), nullable=False)
+    status = Column(String(50), default="SUCCESS")  # SUCCESS, ERROR, TIMEOUT
+    start_time = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    end_time = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    latency_ms = Column(Float, default=0.0)
+    input_json = Column(JSON, nullable=True)
+    output_json = Column(JSON, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+    error_message = Column(Text, nullable=True)
+    provider = Column(String(50), nullable=True)
+    model = Column(String(100), nullable=True)
+    prompt_version_id = Column(String(36), ForeignKey("prompt_versions.id"), nullable=True)
+    input_tokens = Column(Integer, default=0)
+    output_tokens = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    cost_usd = Column(Float, default=0.0)
+
+    trace = relationship("Trace", back_populates="observations")
+    session = relationship("Session", back_populates="observations")
+
+class Prompt(Base):
+    __tablename__ = "prompts"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    versions = relationship("PromptVersion", back_populates="prompt", cascade="all, delete-orphan")
+
+class PromptVersion(Base):
+    __tablename__ = "prompt_versions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    prompt_id = Column(String(36), ForeignKey("prompts.id"), nullable=False, index=True)
+    version = Column(String(50), nullable=False)
+    content = Column(Text, nullable=False)
+    variables_json = Column(JSON, nullable=True)
+    created_by = Column(String(255), nullable=True)
+    environment_label = Column(String(50), default="production")  # production, staging, development
+    status = Column(String(50), default="ACTIVE")
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    prompt = relationship("Prompt", back_populates="versions")
+
+class Experiment(Base):
+    __tablename__ = "experiments"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False, index=True)
+    dataset_id = Column(String(36), ForeignKey("eval_datasets.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(50), default="COMPLETED")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    candidates = relationship("ExperimentCandidate", back_populates="experiment", cascade="all, delete-orphan")
+    runs = relationship("ExperimentRun", back_populates="experiment", cascade="all, delete-orphan")
+
+class ExperimentCandidate(Base):
+    __tablename__ = "experiment_candidates"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    experiment_id = Column(String(36), ForeignKey("experiments.id"), nullable=False, index=True)
+    candidate_label = Column(String(100), nullable=False)  # Candidate A, Candidate B
+    prompt_version_id = Column(String(36), ForeignKey("prompt_versions.id"), nullable=True)
+    model = Column(String(100), nullable=True)
+    provider = Column(String(50), nullable=True)
+    parameters_json = Column(JSON, nullable=True)
+
+    experiment = relationship("Experiment", back_populates="candidates")
+
+class ExperimentRun(Base):
+    __tablename__ = "experiment_runs"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    experiment_id = Column(String(36), ForeignKey("experiments.id"), nullable=False, index=True)
+    candidate_id = Column(String(36), ForeignKey("experiment_candidates.id"), nullable=False)
+    dataset_case_id = Column(String(36), ForeignKey("dataset_cases.id"), nullable=False)
+    trace_id = Column(String(36), ForeignKey("traces.id"), nullable=True)
+    output_text = Column(Text, nullable=True)
+    latency_ms = Column(Float, default=0.0)
+    cost_usd = Column(Float, default=0.0)
+    evaluation_score = Column(Float, default=0.0)
+    status = Column(String(50), default="SUCCESS")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    experiment = relationship("Experiment", back_populates="runs")
+
+class UserFeedback(Base):
+    __tablename__ = "user_feedback"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    trace_id = Column(String(36), ForeignKey("traces.id"), nullable=True, index=True)
+    session_id = Column(String(36), ForeignKey("sessions.id"), nullable=True, index=True)
+    feedback_type = Column(String(50), nullable=False)  # thumbs_up, thumbs_down, rating, comment
+    rating_value = Column(Float, nullable=True)
+    comment = Column(Text, nullable=True)
+    user_id_external = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    trace = relationship("Trace", back_populates="feedback")
+    session = relationship("Session", back_populates="feedback")
+
+class HumanAnnotation(Base):
+    __tablename__ = "human_annotations"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    trace_id = Column(String(36), ForeignKey("traces.id"), nullable=False, index=True)
+    reviewer_id = Column(String(255), nullable=False)
+    quality_score = Column(Float, default=0.0)
+    correctness_score = Column(Float, default=0.0)
+    relevance_score = Column(Float, default=0.0)
+    safety_score = Column(Float, default=0.0)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    trace = relationship("Trace", back_populates="annotations")
+
 
 

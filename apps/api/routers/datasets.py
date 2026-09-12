@@ -26,18 +26,15 @@ class RunCreate(BaseModel):
 
 @router.get("", response_model=List[dict])
 def list_datasets(
-    project_id: str,
+    project_id: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    project = db.query(Project).filter(
-        Project.id == project_id,
-        Project.organization_id == current_user.organization_id
-    ).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    query = db.query(EvalDataset).join(Project).filter(Project.organization_id == current_user.organization_id)
+    if project_id:
+        query = query.filter(EvalDataset.project_id == project_id)
 
-    datasets = db.query(EvalDataset).filter(EvalDataset.project_id == project_id).all()
+    datasets = query.all()
     res = []
     for d in datasets:
         case_count = len(d.cases)

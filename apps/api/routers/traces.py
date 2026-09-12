@@ -51,10 +51,31 @@ def ingest_trace(
         db.add(agent)
         db.flush()
 
+    # Resolve or create Session if session_id passed
+    resolved_session = None
+    if payload.session_id:
+        from apps.api.models import Session as SessionModel
+        resolved_session = db.query(SessionModel).filter(
+            (SessionModel.external_session_id == payload.session_id) | (SessionModel.id == payload.session_id),
+            SessionModel.project_id == project.id
+        ).first()
+
+        if not resolved_session:
+            resolved_session = SessionModel(
+                project_id=project.id,
+                agent_id=agent.id,
+                environment=payload.environment or "production",
+                external_session_id=payload.session_id,
+                user_id_external=payload.user_id
+            )
+            db.add(resolved_session)
+            db.flush()
+
     # Create Trace record
     trace = Trace(
         project_id=project.id,
         agent_id=agent.id,
+        session_id=resolved_session.id if resolved_session else None,
         trace_id_external=payload.trace_id,
         name=payload.name,
         environment=payload.environment or "production",
@@ -136,6 +157,34 @@ def ingest_trace(
                 "tool_category": ev_in.tool_call.tool_category,
                 "status": ev_in.tool_call.status
             })
+
+    # Process observations if sent
+    if payload.observations:
+        from apps.api.models import Observation as ObservationModel
+        for obs_in in payload.observations:
+            obs_rec = ObservationModel(
+                trace_id=trace.id,
+                session_id=resolved_session.id if resolved_session else None,
+                parent_id=obs_in.parent_id,
+                type=obs_in.type,
+                name=obs_in.name,
+                status=obs_in.status or "SUCCESS",
+                start_time=obs_in.start_time or datetime.now(timezone.utc),
+                end_time=obs_in.end_time or datetime.now(timezone.utc),
+                latency_ms=obs_in.latency_ms,
+                input_json=obs_in.input_json,
+                output_json=obs_in.output_json,
+                metadata_json=obs_in.metadata_json,
+                error_message=obs_in.error_message,
+                provider=obs_in.provider,
+                model=obs_in.model,
+                prompt_version_id=obs_in.prompt_version_id,
+                input_tokens=obs_in.input_tokens,
+                output_tokens=obs_in.output_tokens,
+                total_tokens=obs_in.input_tokens + obs_in.output_tokens,
+                cost_usd=obs_in.cost_usd
+            )
+            db.add(obs_rec)
 
     # Update trace token & cost totals
     trace.total_input_tokens = total_input_tokens

@@ -18,19 +18,21 @@ def main():
         agent="greeting-agent",
         version="1.0.0"
     ) as trace:
-        trace.log_input("User: Hello, introduce yourself!")
+        trace.input("User: Hello, introduce yourself!")
         
         # Simulate LLM thinking time
         time.sleep(0.2)
-        trace.log_event(
-            event_type="llm_call",
-            name="LLM: openai/gpt-4o",
-            duration_ms=210.0,
-            inputs={"prompt": "Introduce yourself as an AI assistant."},
-            outputs={"response": "Hello! I am TylerDeck AI assistant."}
+        trace.generation(
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=40,
+            completion_tokens=25,
+            input="Introduce yourself as an AI assistant.",
+            output="Hello! I am TylerDeck AI assistant.",
+            latency_ms=210.0
         )
         
-        trace.log_output("Hello! I am TylerDeck AI assistant.")
+        trace.output("Hello! I am TylerDeck AI assistant.")
 
     td.exporter.shutdown()
     print("Trace successfully dispatched to TylerDeck!")

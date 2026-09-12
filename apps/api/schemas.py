@@ -28,6 +28,32 @@ class UserResponse(BaseModel):
     role: str
     organization_id: str
 
+# --- Organization & Environment Schemas ---
+class OrganizationCreate(BaseModel):
+    name: str
+
+class OrganizationUpdate(BaseModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+
+class OrganizationResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    created_at: datetime
+
+class EnvironmentCreate(BaseModel):
+    name: str  # development, staging, production
+    description: Optional[str] = None
+
+class EnvironmentResponse(BaseModel):
+    id: str
+    project_id: str
+    name: str
+    slug: str
+    description: Optional[str] = None
+    created_at: datetime
+
 # --- Project & Agent Schemas ---
 class ProjectCreate(BaseModel):
     name: str
@@ -43,34 +69,57 @@ class ProjectResponse(BaseModel):
 class AgentCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    initial_version: Optional[str] = "v1.0"
+    environment: Optional[str] = "development"
+    framework: Optional[str] = "custom"
+    provider: Optional[str] = "openai"
+    model: Optional[str] = "gpt-4o"
+    initial_version: Optional[str] = "v1.0.0"
 
 class AgentResponse(BaseModel):
     id: str
     project_id: str
     name: str
     description: Optional[str] = None
-    current_version: str
+    environment: str = "development"
+    framework: str = "custom"
+    provider: str = "openai"
+    model: str = "gpt-4o"
+    current_version: str = "v1.0.0"
     created_at: datetime
 
 class AgentVersionCreate(BaseModel):
     version: str
+    provider: Optional[str] = "openai"
+    model: Optional[str] = "gpt-4o"
+    configuration_json: Optional[Dict[str, Any]] = None
+    status: Optional[str] = "active"
     changelog: Optional[str] = None
 
 class AgentVersionResponse(BaseModel):
     id: str
     agent_id: str
     version: str
+    provider: Optional[str] = "openai"
+    model: Optional[str] = "gpt-4o"
+    configuration_json: Optional[Dict[str, Any]] = None
+    status: str = "active"
     changelog: Optional[str] = None
     created_at: datetime
+
+class ProjectDetailResponse(ProjectResponse):
+    environments: List[EnvironmentResponse] = []
+    agents: List[AgentResponse] = []
+    trace_count: int = 0
 
 # --- API Key Schemas ---
 class APIKeyCreate(BaseModel):
     name: str
+    environment: Optional[str] = "development"
 
 class APIKeyResponse(BaseModel):
     id: str
     name: str
+    environment: str = "development"
     key_prefix: str
     is_active: bool
     last_used_at: Optional[datetime] = None
@@ -111,9 +160,30 @@ class TraceEventIngest(BaseModel):
     llm_call: Optional[LLMCallIngest] = None
     tool_call: Optional[ToolCallIngest] = None
 
+class ObservationIngest(BaseModel):
+    id: Optional[str] = None
+    parent_id: Optional[str] = None
+    type: str  # generation, tool, retrieval, event, workflow, custom
+    name: str
+    status: Optional[str] = "SUCCESS"
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    latency_ms: float = 0.0
+    input_json: Optional[Dict[str, Any]] = None
+    output_json: Optional[Dict[str, Any]] = None
+    metadata_json: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    prompt_version_id: Optional[str] = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float = 0.0
+
 class TraceIngestRequest(BaseModel):
     agent_id: str
     agent_version: Optional[str] = "v1.0"
+    session_id: Optional[str] = None
     trace_id: str  # SDK generated external trace ID
     name: str
     environment: Optional[str] = "production"
@@ -125,12 +195,14 @@ class TraceIngestRequest(BaseModel):
     error_message: Optional[str] = None
     tags: Optional[Dict[str, Any]] = None
     events: List[TraceEventIngest] = []
+    observations: List[ObservationIngest] = []
 
 class TraceResponse(BaseModel):
     id: str
     project_id: str
     agent_id: str
     agent_name: Optional[str] = None
+    session_id: Optional[str] = None
     trace_id_external: str
     name: str
     environment: str
@@ -302,4 +374,151 @@ class WebhookResponse(BaseModel):
     url: str
     is_active: bool
     created_at: datetime
+
+# --- Session Schemas ---
+class SessionCreate(BaseModel):
+    agent_id: Optional[str] = None
+    environment: Optional[str] = "production"
+    external_session_id: Optional[str] = None
+    user_id_external: Optional[str] = None
+    metadata_json: Optional[Dict[str, Any]] = None
+
+class SessionResponse(BaseModel):
+    id: str
+    project_id: str
+    agent_id: Optional[str] = None
+    environment: str
+    external_session_id: Optional[str] = None
+    user_id_external: Optional[str] = None
+    metadata_json: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    updated_at: datetime
+    trace_count: int = 0
+    total_cost_usd: float = 0.0
+    total_latency_ms: float = 0.0
+
+# --- Prompt Schemas ---
+class PromptCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    initial_content: str
+    variables: Optional[List[str]] = []
+
+class PromptVersionCreate(BaseModel):
+    version: str
+    content: str
+    variables: Optional[List[str]] = []
+    environment_label: Optional[str] = "production"
+    status: Optional[str] = "ACTIVE"
+
+class PromptVersionResponse(BaseModel):
+    id: str
+    prompt_id: str
+    version: str
+    content: str
+    variables_json: Optional[Dict[str, Any]] = None
+    created_by: Optional[str] = None
+    environment_label: str
+    status: str
+    created_at: datetime
+
+class PromptResponse(BaseModel):
+    id: str
+    project_id: str
+    name: str
+    description: Optional[str] = None
+    created_at: datetime
+    current_version: Optional[PromptVersionResponse] = None
+
+# --- Playground Schemas ---
+class PlaygroundRunRequest(BaseModel):
+    prompt_content: str
+    input_variables: Dict[str, Any] = {}
+    model: str = "gpt-4o"
+    provider: str = "openai"
+    temperature: float = 0.7
+
+class PlaygroundRunResponse(BaseModel):
+    response_text: str
+    latency_ms: float
+    input_tokens: int
+    output_tokens: int
+    cost_usd: float
+    provider: str
+    model: str
+
+# --- Experiment Schemas ---
+class ExperimentCandidateSchema(BaseModel):
+    candidate_label: str
+    prompt_version_id: Optional[str] = None
+    model: Optional[str] = "gpt-4o"
+    provider: Optional[str] = "openai"
+
+class ExperimentCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    dataset_id: str
+    candidates: List[ExperimentCandidateSchema]
+
+class ExperimentRunSchema(BaseModel):
+    id: str
+    candidate_id: str
+    candidate_label: str
+    dataset_case_id: str
+    input_query: str
+    output_text: str
+    latency_ms: float
+    cost_usd: float
+    evaluation_score: float
+    status: str
+
+class ExperimentResponse(BaseModel):
+    id: str
+    project_id: str
+    dataset_id: str
+    dataset_name: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    status: str
+    created_at: datetime
+    candidates: List[Dict[str, Any]] = []
+    runs: List[ExperimentRunSchema] = []
+
+# --- Feedback & Annotation Schemas ---
+class UserFeedbackCreate(BaseModel):
+    trace_id: Optional[str] = None
+    session_id: Optional[str] = None
+    feedback_type: str  # thumbs_up, thumbs_down, rating, comment
+    rating_value: Optional[float] = None
+    comment: Optional[str] = None
+    user_id_external: Optional[str] = None
+
+class UserFeedbackResponse(BaseModel):
+    id: str
+    trace_id: Optional[str] = None
+    session_id: Optional[str] = None
+    feedback_type: str
+    rating_value: Optional[float] = None
+    comment: Optional[str] = None
+    created_at: datetime
+
+class HumanAnnotationCreate(BaseModel):
+    trace_id: str
+    quality_score: float = Field(..., ge=0.0, le=100.0)
+    correctness_score: float = Field(..., ge=0.0, le=100.0)
+    relevance_score: float = Field(..., ge=0.0, le=100.0)
+    safety_score: float = Field(..., ge=0.0, le=100.0)
+    notes: Optional[str] = None
+
+class HumanAnnotationResponse(BaseModel):
+    id: str
+    trace_id: str
+    reviewer_id: str
+    quality_score: float
+    correctness_score: float
+    relevance_score: float
+    safety_score: float
+    notes: Optional[str] = None
+    created_at: datetime
+
 

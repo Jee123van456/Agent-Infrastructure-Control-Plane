@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 
 interface ErrorCluster {
-  cluster_name: str;
-  error_type: str;
+  cluster_name: string;
+  error_type: string;
   affected_runs: number;
   last_seen: string;
   representative_trace_id: string;

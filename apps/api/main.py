@@ -6,7 +6,7 @@ from apps.api.config import settings
 from apps.api.database import engine, Base, SessionLocal
 from apps.api.routers import (
     auth, projects, traces, metrics, regressions, errors, policies, evaluations, alerts,
-    datasets, webhooks, tool_graph
+    datasets, webhooks, tool_graph, sessions, prompts, playground, experiments, feedback, organizations
 )
 
 # Auto-create tables on startup if not present
@@ -34,6 +34,7 @@ app.add_middleware(
 
 # Include Routers
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
+app.include_router(organizations.router, prefix=settings.API_V1_PREFIX)
 app.include_router(projects.router, prefix=settings.API_V1_PREFIX)
 app.include_router(traces.router, prefix=settings.API_V1_PREFIX)
 app.include_router(metrics.router, prefix=settings.API_V1_PREFIX)
@@ -45,6 +46,11 @@ app.include_router(alerts.router, prefix=settings.API_V1_PREFIX)
 app.include_router(datasets.router, prefix=settings.API_V1_PREFIX)
 app.include_router(webhooks.router, prefix=settings.API_V1_PREFIX)
 app.include_router(tool_graph.router, prefix=settings.API_V1_PREFIX)
+app.include_router(sessions.router, prefix=settings.API_V1_PREFIX)
+app.include_router(prompts.router, prefix=settings.API_V1_PREFIX)
+app.include_router(playground.router, prefix=settings.API_V1_PREFIX)
+app.include_router(experiments.router, prefix=settings.API_V1_PREFIX)
+app.include_router(feedback.router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/")
 def root():

@@ -10,7 +10,8 @@ from apps.api.database import SessionLocal, engine, Base
 from apps.api.models import (
     Organization, User, Project, Agent, AgentVersion, APIKey,
     Trace, TraceEvent, LLMCall, ToolCall, Evaluation, Policy, PolicyViolation, Alert, AlertEvent,
-    EvalDataset, DatasetCase, DatasetRun
+    EvalDataset, DatasetCase, DatasetRun, Session as SessionModel, Prompt, PromptVersion,
+    Experiment, ExperimentCandidate, ExperimentRun, UserFeedback, HumanAnnotation
 )
 from apps.api.auth import hash_password, generate_api_key, hash_api_key
 from apps.api.pricing import calculate_llm_cost
@@ -430,8 +431,128 @@ def seed_database():
             created_at=now - timedelta(hours=2)
         ))
 
+        # 13. Create Sessions
+        sess1 = SessionModel(
+            project_id=project.id,
+            agent_id=support_agent.id,
+            environment="production",
+            external_session_id="sess_support_conv_9901",
+            user_id_external="usr_support_1",
+            metadata_json={"channel": "web_chat", "user_tier": "VIP"}
+        )
+        db.add(sess1)
+        db.flush()
+
+        # Link first 3 v1.4 traces to session 1
+        v14_traces = db.query(Trace).filter(Trace.agent_version == "v1.4").limit(3).all()
+        for tr in v14_traces:
+            tr.session_id = sess1.id
+
+        # 14. Create Prompts and Prompt Versions
+        prompt1 = Prompt(
+            project_id=project.id,
+            name="Support-Agent-System-Prompt",
+            description="System instructions for handling customer order lookups, returns, and shipping inquiries."
+        )
+        db.add(prompt1)
+        db.flush()
+
+        pv1 = PromptVersion(
+            prompt_id=prompt1.id,
+            version="v1.0",
+            content="You are a helpful customer support assistant. Retrieve order details using order_database_search. Respond concisely.",
+            variables_json={"variables": ["customer_name", "order_id"]},
+            created_by="alex@acmeai.com",
+            environment_label="production",
+            status="ACTIVE"
+        )
+        pv2 = PromptVersion(
+            prompt_id=prompt1.id,
+            version="v2.0",
+            content="You are an expert customer service representative. Always check customer eligibility before issuing refunds. Use tool order_database_search.",
+            variables_json={"variables": ["customer_name", "order_id", "tier"]},
+            created_by="alex@acmeai.com",
+            environment_label="staging",
+            status="ACTIVE"
+        )
+        db.add_all([pv1, pv2])
+        db.flush()
+
+        # 15. Create Side-by-Side Experiments
+        exp = Experiment(
+            project_id=project.id,
+            dataset_id=eval_ds.id,
+            name="Order Support Model Benchmark #12",
+            description="Comparing Candidate A (Prompt v1.0 / GPT-4o-mini) against Candidate B (Prompt v2.0 / Claude 3.5 Sonnet)",
+            status="COMPLETED"
+        )
+        db.add(exp)
+        db.flush()
+
+        cand_a = ExperimentCandidate(
+            experiment_id=exp.id,
+            candidate_label="Candidate A (GPT-4o-mini)",
+            prompt_version_id=pv1.id,
+            model="gpt-4o-mini",
+            provider="openai"
+        )
+        cand_b = ExperimentCandidate(
+            experiment_id=exp.id,
+            candidate_label="Candidate B (Claude 3.5 Sonnet)",
+            prompt_version_id=pv2.id,
+            model="claude-3-5-sonnet",
+            provider="anthropic"
+        )
+        db.add_all([cand_a, cand_b])
+        db.flush()
+
+        # Populate experiment runs for dataset cases
+        cases = db.query(DatasetCase).filter(DatasetCase.dataset_id == eval_ds.id).limit(4).all()
+        for case in cases:
+            db.add(ExperimentRun(
+                experiment_id=exp.id,
+                candidate_id=cand_a.id,
+                dataset_case_id=case.id,
+                output_text=f"Candidate A output for query: {case.input_query}",
+                latency_ms=1200.0,
+                cost_usd=0.0012,
+                evaluation_score=92.0,
+                status="SUCCESS"
+            ))
+            db.add(ExperimentRun(
+                experiment_id=exp.id,
+                candidate_id=cand_b.id,
+                dataset_case_id=case.id,
+                output_text=f"Candidate B output for query: {case.input_query}",
+                latency_ms=950.0,
+                cost_usd=0.0045,
+                evaluation_score=98.0,
+                status="SUCCESS"
+            ))
+
+        # 16. Create User Feedback & Human Annotations
+        sample_trace = db.query(Trace).first()
+        if sample_trace:
+            db.add(UserFeedback(
+                trace_id=sample_trace.id,
+                session_id=sess1.id,
+                feedback_type="thumbs_up",
+                rating_value=5.0,
+                comment="Agent resolved my order inquiry in under 3 seconds!",
+                user_id_external="usr_support_1"
+            ))
+            db.add(HumanAnnotation(
+                trace_id=sample_trace.id,
+                reviewer_id="alex@acmeai.com",
+                quality_score=95.0,
+                correctness_score=98.0,
+                relevance_score=96.0,
+                safety_score=100.0,
+                notes="Accurate tool parameter passing and courteous tone."
+            ))
+
         db.commit()
-        print("Database successfully seeded with realistic production agent traces, evaluations, security policy violations, and version regression data!")
+        print("Database successfully seeded with realistic production agent traces, evaluations, security policy violations, sessions, prompts, experiments, and version regression data!")
         print(f"User Login: alex@acmeai.com / password123")
         print(f"SDK Test Key: {test_raw_key}")
 
