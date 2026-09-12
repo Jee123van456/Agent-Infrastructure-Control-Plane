@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FolderKanban, Bot, Plus, ArrowRight, Activity, Layers, Key, Check, AlertCircle } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -22,10 +23,7 @@ export default function ProjectsPage() {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('td_token');
-      const res = await fetch('http://localhost:8000/api/v1/projects', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await apiFetch('/api/v1/projects');
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
@@ -47,13 +45,8 @@ export default function ProjectsPage() {
 
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('td_token');
-      const res = await fetch('http://localhost:8000/api/v1/projects', {
+      const res = await apiFetch('/api/v1/projects', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({ name: name.trim(), description })
       });
 

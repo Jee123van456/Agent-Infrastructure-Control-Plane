@@ -6,6 +6,8 @@ import {
   FolderKanban, Bot, Key, Plus, Copy, Check, AlertCircle, Layers, Activity, Clock, ShieldCheck 
 } from 'lucide-react';
 
+import { apiFetch } from '@/lib/api';
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const projectId = params.id as string;
@@ -49,13 +51,8 @@ export default function ProjectDetailPage() {
 
     setSubmittingEnv(true);
     try {
-      const token = localStorage.getItem('td_token');
-      const res = await fetch(`http://localhost:8000/api/v1/projects/${projectId}/environments`, {
+      const res = await apiFetch(`/api/v1/projects/${projectId}/environments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({ name: envName.trim() })
       });
 
@@ -80,10 +77,7 @@ export default function ProjectDetailPage() {
   const fetchProjectDetail = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('td_token');
-      const res = await fetch(`http://localhost:8000/api/v1/projects/${projectId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await apiFetch(`/api/v1/projects/${projectId}`);
       if (res.ok) {
         const data = await res.json();
         setProject(data);
@@ -107,13 +101,8 @@ export default function ProjectDetailPage() {
 
     setSubmittingAgent(true);
     try {
-      const token = localStorage.getItem('td_token');
-      const res = await fetch(`http://localhost:8000/api/v1/projects/${projectId}/agents`, {
+      const res = await apiFetch(`/api/v1/projects/${projectId}/agents`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({
           name: agentName.trim(),
           description: agentDesc,
@@ -151,13 +140,8 @@ export default function ProjectDetailPage() {
 
     setSubmittingKey(true);
     try {
-      const token = localStorage.getItem('td_token');
-      const res = await fetch(`http://localhost:8000/api/v1/projects/${projectId}/api-keys`, {
+      const res = await apiFetch(`/api/v1/projects/${projectId}/api-keys`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({ name: keyName.trim(), environment: keyEnv })
       });
 

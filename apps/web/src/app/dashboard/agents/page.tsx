@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Bot, Activity, Plus } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export default function AgentsPage() {
   const router = useRouter();
@@ -17,10 +18,7 @@ export default function AgentsPage() {
   const fetchAgents = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('td_token');
-      const res = await fetch('http://localhost:8000/api/v1/agents', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await apiFetch('/api/v1/agents');
       if (res.ok) {
         setAgents(await res.json());
       }

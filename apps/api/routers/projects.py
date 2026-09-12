@@ -31,6 +31,12 @@ def create_project(
     if not payload.name or not payload.name.strip():
         raise HTTPException(status_code=400, detail="Project name cannot be empty")
 
+    if not current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is not associated with an organization."
+        )
+
     try:
         project = Project(
             organization_id=current_user.organization_id,

@@ -106,3 +106,34 @@ def test_organization_isolation_security():
     # User B attempts to access Org A's project
     forbidden_res = client.get(f"/api/v1/projects/{proj_id_a}", headers=headers_b)
     assert forbidden_res.status_code in [403, 404], f"Org B accessed Org A's project! Status: {forbidden_res.status_code}"
+
+def test_authentication_and_project_creation_security():
+    """
+    Verifies authentication token validation and project creation security.
+    """
+    # 1. Unauthenticated request -> 401
+    no_auth_res = client.post("/api/v1/projects", json={"name": "Unauth Proj"})
+    assert no_auth_res.status_code == 401
+    assert "Missing authentication credentials" in no_auth_res.json()["detail"]
+
+    # 2. Invalid token -> 401 Could not validate credentials
+    bad_auth_res = client.post(
+        "/api/v1/projects",
+        headers={"Authorization": "Bearer invalid_junk_token_123"},
+        json={"name": "Bad Auth Proj"}
+    )
+    assert bad_auth_res.status_code == 401
+    assert bad_auth_res.json()["detail"] == "Could not validate credentials"
+
+    # 3. Valid authenticated request -> 200 Project created
+    valid_headers = create_user_and_login("auth_tester@tylerdeck.ai", "password123", "Auth Tester", "TylerDeck Security Org")
+    valid_res = client.post(
+        "/api/v1/projects",
+        headers=valid_headers,
+        json={"name": "TylerDeck Security Demo Project", "description": "Verified Project Creation"}
+    )
+    assert valid_res.status_code == 200
+    created_proj = valid_res.json()
+    assert created_proj["name"] == "TylerDeck Security Demo Project"
+    assert "id" in created_proj
+
