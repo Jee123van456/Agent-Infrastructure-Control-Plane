@@ -88,3 +88,26 @@ def test_sdk_trace_ingestion():
     )
     assert ingest_resp.status_code == 200
     assert ingest_resp.json()["status"] == "success"
+
+def test_tool_graph_endpoint():
+    login_resp = client.post("/api/v1/auth/login", json={"email": "alex@acmeai.com", "password": "password123"})
+    token = login_resp.json()["access_token"]
+
+    resp = client.get("/api/v1/tool-graph", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "nodes" in data
+    assert "edges" in data
+
+def test_webhooks_endpoint():
+    login_resp = client.post("/api/v1/auth/login", json={"email": "alex@acmeai.com", "password": "password123"})
+    token = login_resp.json()["access_token"]
+
+    create_resp = client.post("/api/v1/webhooks", json={"name": "Audit Webhook", "url": "https://example.com/hook"}, headers={"Authorization": f"Bearer {token}"})
+    assert create_resp.status_code == 200
+    assert "signing_secret" in create_resp.json()
+
+    list_resp = client.get("/api/v1/webhooks", headers={"Authorization": f"Bearer {token}"})
+    assert list_resp.status_code == 200
+    assert len(list_resp.json()) > 0
+

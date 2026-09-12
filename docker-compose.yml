@@ -1,10 +1,9 @@
-version: '3.8'
-
 services:
   api:
     build:
       context: .
       dockerfile: docker/Dockerfile.api
+      network: host
     ports:
       - "8000:8000"
     environment:
@@ -17,6 +16,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.web
+      network: host
     ports:
       - "3000:3000"
     environment:
@@ -31,7 +31,7 @@ services:
       - POSTGRES_PASSWORD=tylerdeckpass
       - POSTGRES_DB=tylerdeckdb
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 

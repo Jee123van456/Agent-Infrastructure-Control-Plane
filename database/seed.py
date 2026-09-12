@@ -1,7 +1,7 @@
 import os
 import sys
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Add parent directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -64,7 +64,7 @@ def seed_database():
             key_prefix=test_key_prefix,
             key_hash=test_key_hash,
             is_active=True,
-            last_used_at=datetime.utcnow()
+            last_used_at=datetime.now(timezone.utc)
         )
         db.add(api_key)
         db.flush()
@@ -115,7 +115,7 @@ def seed_database():
         db.flush()
 
         # 7. Generate Traces for Support Agent v1.4 (20 successful, high quality runs)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for i in range(20):
             t_time = now - timedelta(hours=random.randint(24, 72))
             tr = Trace(

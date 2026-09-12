@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -66,7 +66,7 @@ def ingest_trace(
         total_duration_ms=payload.total_duration_ms,
         error_message=payload.error_message,
         tags=payload.tags or {},
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(trace)
     db.flush()
@@ -84,8 +84,8 @@ def ingest_trace(
             event_type=ev_in.event_type,
             name=ev_in.name,
             parent_event_id=ev_in.parent_event_id,
-            start_time=ev_in.start_time or datetime.utcnow(),
-            end_time=ev_in.end_time or datetime.utcnow(),
+            start_time=ev_in.start_time or datetime.now(timezone.utc),
+            end_time=ev_in.end_time or datetime.now(timezone.utc),
             duration_ms=ev_in.duration_ms,
             inputs=ev_in.inputs,
             outputs=ev_in.outputs,

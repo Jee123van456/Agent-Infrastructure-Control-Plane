@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from apps.api.config import settings
 from apps.api.database import engine, Base
 from apps.api.routers import (
-    auth, projects, traces, metrics, regressions, errors, policies, evaluations, alerts
+    auth, projects, traces, metrics, regressions, errors, policies, evaluations, alerts,
+    datasets, webhooks, tool_graph
 )
 
 # Auto-create tables on startup if not present
@@ -37,6 +38,9 @@ app.include_router(errors.router, prefix=settings.API_V1_PREFIX)
 app.include_router(policies.router, prefix=settings.API_V1_PREFIX)
 app.include_router(evaluations.router, prefix=settings.API_V1_PREFIX)
 app.include_router(alerts.router, prefix=settings.API_V1_PREFIX)
+app.include_router(datasets.router, prefix=settings.API_V1_PREFIX)
+app.include_router(webhooks.router, prefix=settings.API_V1_PREFIX)
+app.include_router(tool_graph.router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/")
 def root():

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Text, Boolean, Integer, Float, DateTime, ForeignKey, JSON, Numeric
 )
@@ -245,4 +245,70 @@ class ModelPricing(Base):
     model = Column(String(100), nullable=False, unique=True)
     input_cost_per_1m = Column(Float, nullable=False)   # in USD
     output_cost_per_1m = Column(Float, nullable=False)  # in USD
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class EvalDataset(Base):
+    __tablename__ = "eval_datasets"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    cases = relationship("DatasetCase", back_populates="dataset", cascade="all, delete-orphan")
+    runs = relationship("DatasetRun", back_populates="dataset", cascade="all, delete-orphan")
+
+class DatasetCase(Base):
+    __tablename__ = "dataset_cases"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    dataset_id = Column(String(36), ForeignKey("eval_datasets.id"), nullable=False)
+    input_query = Column(Text, nullable=False)
+    expected_tool = Column(String(255), nullable=True)
+    expected_output_contains = Column(Text, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    dataset = relationship("EvalDataset", back_populates="cases")
+
+class DatasetRun(Base):
+    __tablename__ = "dataset_runs"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    dataset_id = Column(String(36), ForeignKey("eval_datasets.id"), nullable=False)
+    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False)
+    agent_version = Column(String(50), default="v1.0")
+    total_cases = Column(Integer, default=0)
+    passed_cases = Column(Integer, default=0)
+    pass_rate_percent = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    dataset = relationship("EvalDataset", back_populates="runs")
+
+class Webhook(Base):
+    __tablename__ = "webhooks"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    url = Column(String(500), nullable=False)
+    secret = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    logs = relationship("WebhookLog", back_populates="webhook", cascade="all, delete-orphan")
+
+class WebhookLog(Base):
+    __tablename__ = "webhook_logs"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    webhook_id = Column(String(36), ForeignKey("webhooks.id"), nullable=False)
+    event_type = Column(String(100), nullable=False)
+    status_code = Column(Integer, nullable=True)
+    payload_json = Column(JSON, nullable=True)
+    response_body = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    webhook = relationship("Webhook", back_populates="logs")
+

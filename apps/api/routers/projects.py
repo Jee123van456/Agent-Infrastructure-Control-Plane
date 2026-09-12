@@ -93,7 +93,10 @@ def add_agent_version(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    agent = db.query(Agent).filter(Agent.id == agent_id).first()
+    agent = db.query(Agent).join(Project).filter(
+        Agent.id == agent_id,
+        Project.organization_id == current_user.organization_id
+    ).first()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -115,6 +118,13 @@ def list_api_keys(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.organization_id == current_user.organization_id
+    ).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
     return db.query(APIKey).filter(
         APIKey.project_id == project_id,
         APIKey.is_active == True
@@ -161,7 +171,10 @@ def revoke_api_key(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    key = db.query(APIKey).filter(APIKey.id == key_id).first()
+    key = db.query(APIKey).join(Project).filter(
+        APIKey.id == key_id,
+        Project.organization_id == current_user.organization_id
+    ).first()
     if not key:
         raise HTTPException(status_code=404, detail="API key not found")
     

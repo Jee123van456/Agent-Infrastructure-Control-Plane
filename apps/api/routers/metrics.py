@@ -117,3 +117,13 @@ def get_cost_breakdown(
         total_spend_usd=round(total_spend, 4),
         providers=providers_res
     )
+
+@router.get("/agent-health", response_model=dict)
+def get_agent_health_score(
+    agent_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from apps.api.health_engine import calculate_agent_health
+    return calculate_agent_health(db, agent_id, current_user.organization_id)
+

@@ -1,5 +1,5 @@
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -21,10 +21,10 @@ def get_error_clusters(
     ).all()
 
     clusters = {
-        "Tool Timeout": {"count": 0, "last_seen": datetime.utcnow(), "sample": "Tool execution exceeded timeout threshold (5000ms)", "trace_id": ""},
-        "Invalid Tool Arguments": {"count": 0, "last_seen": datetime.utcnow(), "sample": "Missing required field 'order_id' in tool parameters", "trace_id": ""},
-        "LLM Rate Limit": {"count": 0, "last_seen": datetime.utcnow(), "sample": "HTTP 429: OpenAI rate limit exceeded for model gpt-4o", "trace_id": ""},
-        "Policy Violation": {"count": 0, "last_seen": datetime.utcnow(), "sample": "SECURITY ALERT: Attempted forbidden tool 'shell_execution'", "trace_id": ""}
+        "Tool Timeout": {"count": 0, "last_seen": datetime.now(timezone.utc), "sample": "Tool execution exceeded timeout threshold (5000ms)", "trace_id": ""},
+        "Invalid Tool Arguments": {"count": 0, "last_seen": datetime.now(timezone.utc), "sample": "Missing required field 'order_id' in tool parameters", "trace_id": ""},
+        "LLM Rate Limit": {"count": 0, "last_seen": datetime.now(timezone.utc), "sample": "HTTP 429: OpenAI rate limit exceeded for model gpt-4o", "trace_id": ""},
+        "Policy Violation": {"count": 0, "last_seen": datetime.now(timezone.utc), "sample": "SECURITY ALERT: Attempted forbidden tool 'shell_execution'", "trace_id": ""}
     }
 
     for t in traces:
@@ -70,7 +70,7 @@ def get_error_clusters(
                 cluster_name="Tool Timeout",
                 error_type="RUNTIME_FAILURE",
                 affected_runs=14,
-                last_seen=datetime.utcnow(),
+                last_seen=datetime.now(timezone.utc),
                 representative_trace_id="tr_demo_01",
                 sample_error="Tool execution 'database_search' timed out after 5000ms"
             ),
@@ -78,7 +78,7 @@ def get_error_clusters(
                 cluster_name="Invalid Tool Arguments",
                 error_type="VALIDATION_ERROR",
                 affected_runs=8,
-                last_seen=datetime.utcnow(),
+                last_seen=datetime.now(timezone.utc),
                 representative_trace_id="tr_demo_02",
                 sample_error="JSON Schema validation failed: 'customer_id' is required"
             )

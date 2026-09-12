@@ -5,7 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { 
   Activity, LayoutDashboard, FolderKanban, Bot, Cpu, GitCompare, 
-  AlertTriangle, DollarSign, ShieldCheck, Bell, Key, Settings, LogOut, Search, CheckCircle2
+  AlertTriangle, DollarSign, ShieldCheck, Bell, Key, Settings, LogOut, Search, CheckCircle2,
+  Network, Database, Webhook
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -35,12 +36,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Projects & Agents', href: '/dashboard/projects', icon: FolderKanban },
     { name: 'Trace Explorer', href: '/dashboard/traces', icon: Activity },
+    { name: 'Tool Graph', href: '/dashboard/tool-graph', icon: Network, badge: 'NEW' },
     { name: 'Version Regressions', href: '/dashboard/regressions', icon: GitCompare, badge: 'REGRESSION' },
+    { name: 'Eval Datasets', href: '/dashboard/datasets', icon: Database },
     { name: 'Evaluations', href: '/dashboard/evaluations', icon: CheckCircle2 },
     { name: 'Error Clusters', href: '/dashboard/errors', icon: AlertTriangle },
     { name: 'Cost Intelligence', href: '/dashboard/cost', icon: DollarSign },
     { name: 'Security & Policies', href: '/dashboard/security', icon: ShieldCheck },
-    { name: 'Alerts', href: '/dashboard/alerts', icon: Bell },
+    { name: 'Alerts & Webhooks', href: '/dashboard/alerts', icon: Bell },
     { name: 'API Keys', href: '/dashboard/api-keys', icon: Key },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
