@@ -137,3 +137,39 @@ def test_authentication_and_project_creation_security():
     assert created_proj["name"] == "TylerDeck Security Demo Project"
     assert "id" in created_proj
 
+def test_google_and_apple_oauth_signup_and_login():
+    """
+    Tests social OAuth registration and authentication for Google and Apple ID.
+    """
+    # 1. Google OAuth Signup & Login
+    google_res = client.post("/api/v1/auth/oauth", json={
+        "provider": "google",
+        "email": "sarah.connor@gmail.com",
+        "full_name": "Sarah Connor",
+        "provider_user_id": "google_sub_998877",
+        "avatar_url": "https://lh3.googleusercontent.com/avatar.jpg"
+    })
+    assert google_res.status_code == 200
+    google_data = google_res.json()
+    assert google_data["email"] == "sarah.connor@gmail.com"
+    assert google_data["auth_provider"] == "google"
+    assert "access_token" in google_data
+
+    # Verify /me endpoint returns OAuth metadata
+    me_res = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {google_data['access_token']}"})
+    assert me_res.status_code == 200
+    assert me_res.json()["auth_provider"] == "google"
+
+    # 2. Apple OAuth Signup & Login
+    apple_res = client.post("/api/v1/auth/oauth", json={
+        "provider": "apple",
+        "email": "john.wick@icloud.com",
+        "full_name": "John Wick",
+        "provider_user_id": "apple_sub_112233"
+    })
+    assert apple_res.status_code == 200
+    apple_data = apple_res.json()
+    assert apple_data["email"] == "john.wick@icloud.com"
+    assert apple_data["auth_provider"] == "apple"
+    assert "access_token" in apple_data
+

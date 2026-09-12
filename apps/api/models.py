@@ -29,6 +29,10 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
     role = Column(String(50), default="member")  # owner, admin, member
+    auth_provider = Column(String(50), default="email")  # email, google, apple
+    provider_user_id = Column(String(255), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
+    email_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     organization = relationship("Organization", back_populates="users")

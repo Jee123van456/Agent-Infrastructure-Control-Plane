@@ -9,11 +9,17 @@ from apps.api.routers import (
     datasets, webhooks, tool_graph, sessions, prompts, playground, experiments, feedback, organizations
 )
 
-# Auto-create tables on startup if not present
+# Auto-create tables on startup if not present & run lightweight schema migrations
 try:
     Base.metadata.create_all(bind=engine)
-except Exception:
-    pass
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'email'"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_user_id VARCHAR(255)"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE"))
+        conn.commit()
+except Exception as exc:
+    print("Startup migration notice:", exc)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

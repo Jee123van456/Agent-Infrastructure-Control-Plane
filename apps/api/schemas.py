@@ -13,6 +13,15 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class OAuthLoginRequest(BaseModel):
+    provider: str  # 'google', 'apple'
+    email: EmailStr
+    full_name: Optional[str] = None
+    provider_user_id: Optional[str] = None
+    id_token: Optional[str] = None
+    avatar_url: Optional[str] = None
+    organization_name: Optional[str] = None
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -20,6 +29,8 @@ class AuthResponse(BaseModel):
     organization_id: str
     email: str
     full_name: str
+    avatar_url: Optional[str] = None
+    auth_provider: Optional[str] = "email"
 
 class UserResponse(BaseModel):
     id: str
@@ -27,6 +38,8 @@ class UserResponse(BaseModel):
     full_name: str
     role: str
     organization_id: str
+    avatar_url: Optional[str] = None
+    auth_provider: Optional[str] = "email"
 
 # --- Organization & Environment Schemas ---
 class OrganizationCreate(BaseModel):
