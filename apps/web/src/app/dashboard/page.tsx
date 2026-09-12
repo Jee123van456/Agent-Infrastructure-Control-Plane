@@ -75,6 +75,42 @@ export default function DashboardOverview() {
         </div>
       </div>
 
+      {/* Onboarding Progress Checklist Banner */}
+      <div className="p-5 rounded-xl bg-dark-900 border border-blue-500/30 space-y-3 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white font-bold text-sm font-mono">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            CONNECT YOUR FIRST AGENT
+          </div>
+          <Link href="/connect-agent" className="text-xs text-blue-400 hover:underline font-mono flex items-center gap-1 font-semibold">
+            Open Wizard <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs font-mono">
+          <div className="p-2.5 rounded bg-dark-950 border border-emerald-500/30 text-emerald-400 flex items-center justify-between">
+            <span>1. Create Project</span>
+            <span>✓</span>
+          </div>
+          <div className="p-2.5 rounded bg-dark-950 border border-emerald-500/30 text-emerald-400 flex items-center justify-between">
+            <span>2. Generate Key</span>
+            <span>✓</span>
+          </div>
+          <div className="p-2.5 rounded bg-dark-950 border border-blue-500/30 text-blue-400 flex items-center justify-between">
+            <span>3. Install SDK</span>
+            <span>→</span>
+          </div>
+          <div className="p-2.5 rounded bg-dark-950 border border-dark-800 text-slate-400 flex items-center justify-between">
+            <span>4. Send First Trace</span>
+            <span>→</span>
+          </div>
+          <div className="p-2.5 rounded bg-dark-950 border border-dark-800 text-slate-400 flex items-center justify-between">
+            <span>5. Agent Health</span>
+            <span>→</span>
+          </div>
+        </div>
+      </div>
+
       {/* Active Alert Banner */}
       <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
         <div className="flex items-center gap-3 text-amber-300 text-xs">
